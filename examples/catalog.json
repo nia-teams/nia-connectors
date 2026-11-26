@@ -1,0 +1,22 @@
+{
+  "connectors": [
+    {
+      "id": "nia-local-demo", "kind": "mcp", "name": {"zh": "本地演示工具", "en": "Local Demo Tools"},
+      "description": {"zh": "尝试调用一个本地回显工具，无需外部账号或网络。", "en": "Try an offline echo tool without creating an external account."},
+      "category": "productivity", "tags": ["demo", "本地"], "auth": {"mode": "none"},
+      "mcp": {"transport": "stdio", "command": "node", "args": ["examples/demo-mcp.mjs"]}
+    },
+    {
+      "id": "git", "kind": "cli", "name": {"zh": "Git 版本控制", "en": "Git"},
+      "description": {"zh": "检测本机 Git，查看安装和配置命令。", "en": "Detect Git and find installation and configuration instructions."},
+      "category": "developer", "tags": ["version control"], "auth": {"mode": "none"},
+      "cli": {"binary": "git", "versionCommand": "git --version", "install": {"darwin": "brew install git", "linux": "sudo apt install git", "win32": "winget install Git.Git"}, "docsUrl": "https://git-scm.com/install/"}
+    },
+    {
+      "id": "nia-teams-oauth", "kind": "mcp", "name": {"zh": "Nia Teams 授权", "en": "Nia Teams OAuth"},
+      "description": {"zh": "预览第二阶段的 Nia Teams OAuth 授权，当前不可启用。", "en": "Preview the planned Phase 2 authorization flow."},
+      "category": "office", "tags": ["oauth"], "auth": {"mode": "nia-oauth"},
+      "mcp": {"transport": "streamable-http", "url": "https://example.invalid/mcp"}
+    }
+  ]
+}
