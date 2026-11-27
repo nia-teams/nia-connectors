@@ -14,9 +14,12 @@ function ConnectorCard({ connector, busy, open, connect }: { connector: Connecto
   const unavailable = connector.status === 'coming-soon';
   return <article className="connector-card">
     <Avatar connector={connector} />
-    <h3 className="card-name"><button className="card-link" type="button" onClick={open} aria-label={`查看 ${connector.name.zh} 连接器`}>
-      <span>{connector.name.zh}</span>{connector.enabled && <i className="live-dot" aria-label="已连接" />}
-    </button></h3>
+    <div className="card-heading">
+      <h3 className="card-name"><button className="card-link" type="button" onClick={open} aria-label={`查看 ${connector.name.zh} 连接器`}>
+        <span>{connector.name.zh}</span>{connector.enabled && <i className="live-dot" aria-label="已连接" />}
+      </button></h3>
+      <span className={`connector-kind kind-${connector.kind}`}>{connector.kind === 'cli' ? '本机 CLI' : 'MCP'}</span>
+    </div>
     <div className="card-action">
       {connector.enabled ? <span className="connected-chip">已连接</span> : unavailable ? <span className="preview-label">预览</span> :
         <button className="quick-connect" type="button" disabled={busy} aria-label={`${busy ? '正在连接' : '连接'} ${connector.name.zh}`} title="连接" onClick={connect}>
@@ -65,7 +68,10 @@ function App() {
   }, [revision]);
   const all = catalog?.connectors ?? [];
   const enabledCount = catalog?.counts.enabled ?? 0;
-  const gatewayCount = all.filter(item => item.enabled && item.kind === 'mcp').length;
+  const mcpEnabledCount = all.filter(item => item.enabled && item.kind === 'mcp').length;
+  const connectedClis = all.filter(item => item.enabled && item.kind === 'cli');
+  const cliEnabledCount = connectedClis.length;
+  const connectionBreakdown = `MCP ${mcpEnabledCount} · CLI ${cliEnabledCount}`;
   const keyword = query.trim().toLocaleLowerCase();
   const items = all.filter(item => {
     if (category !== 'all' && (category === 'enabled' ? !item.enabled : item.category !== category)) return false;
@@ -74,6 +80,8 @@ function App() {
   });
   const grouped = category === 'all' && !keyword;
   const connected = grouped ? items.filter(item => item.enabled) : [];
+  const connectedMcpCount = connected.filter(item => item.kind === 'mcp').length;
+  const connectedCliCount = connected.filter(item => item.kind === 'cli').length;
   const remaining = connected.length ? items.filter(item => !item.enabled) : items;
 
   function open(id: string, setup = false) { setDialog({ view: 'details', id, setup }); }
@@ -100,8 +108,8 @@ function App() {
           <div className="search"><MagnifyingGlassIcon /><input ref={searchInput} type="text" role="searchbox" aria-label="搜索连接器" placeholder="搜索连接器…" value={query} onChange={event => setQuery(event.target.value)} />
             {query && <button type="button" className="clear-search" aria-label="清除搜索" onClick={() => { setQuery(''); searchInput.current?.focus(); }}><XMarkIcon /></button>}
           </div>
-          <button className="gateway-status" type="button" aria-label={`本地网关 · ${gatewayCount} 已连接，接入 Agent`} title={`本地网关 · ${gatewayCount} 已连接`} onClick={openAgent}>
-            <i className="live-dot" /><span className="gateway-caption">本地网关 · </span><span>{gatewayCount}</span><span className="gateway-caption">已连接</span>
+          <button className="gateway-status" type="button" aria-label={`已连接：${connectionBreakdown}，接入 Agent`} title={`已连接：${connectionBreakdown}`} onClick={openAgent}>
+            <i className="live-dot" aria-hidden="true" /><span>{connectionBreakdown}</span>
           </button>
           <button className="icon-btn theme-toggle" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} type="button" aria-label={theme === 'dark' ? '切换浅色主题' : '切换深色主题'} title={theme === 'dark' ? '浅色主题' : '深色主题'}>
             {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
@@ -127,6 +135,7 @@ function App() {
       <div className="catalog-results" aria-busy={loading}>
         {connected.length > 0 && <section className="catalog-section" aria-labelledby="connected-title"><div className="section-title">
           <span className="live-dot" /><h2 id="connected-title">已连接</h2><span className="counter">{connected.length}</span>
+          <span className="connection-breakdown">MCP {connectedMcpCount} · CLI {connectedCliCount}</span>
         </div>{grid(connected)}</section>}
         {(remaining.length > 0 || (catalog && !connected.length && !loading && !error)) && <section className="catalog-section" aria-labelledby="catalog-title">
           <div className="section-title"><h2 id="catalog-title">{keyword ? '搜索结果' : connected.length ? '探索更多' : category === 'all' ? '全部连接器' : current}</h2><span className="counter">{remaining.length}</span></div>
@@ -134,7 +143,7 @@ function App() {
         </section>}
       </div>
     </main>
-    {dialog?.view === 'agent' && <AgentSetup close={() => setDialog(undefined)} />}
+    {dialog?.view === 'agent' && <AgentSetup connectedClis={connectedClis} close={() => setDialog(undefined)} />}
     {dialog?.view === 'details' && <ConnectorDetails key={dialog.id} id={dialog.id} initial={all.find(item => item.id === dialog.id)} latest={latest} setup={dialog.setup}
       oauth={oauth} close={() => setDialog(undefined)} changed={changed} />}
   </>;

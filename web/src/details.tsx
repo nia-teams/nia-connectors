@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { ArrowTopRightOnSquareIcon, BeakerIcon, ClipboardDocumentIcon, EyeIcon, EyeSlashIcon, LinkIcon, SparklesIcon } from '@heroicons/react/24/outline';
 import { usesBrowserOAuth } from '../../shared/auth.js';
 import type { ClientConfigs, CliStatus, TestResult } from '../../shared/catalog.js';
@@ -133,6 +133,7 @@ export function ConnectorDetails({ id, initial, latest, setup, close, changed, o
       </section> : null}
       {connector.cli && <section className="detail-section" ref={!connector.auth.fields?.length ? setupRef : undefined} tabIndex={-1}>
         <div className="section-head"><h3>本地安装</h3>{cli && <span className={cli.installed ? 'connected-chip' : 'status-label'}>{cli.installed ? `已安装${cli.version ? ` · ${cli.version}` : ''}` : '未安装'}</span>}</div>
+        {isCli && <p className="info-note">此服务通过本机命令 <code>{connector.cli.binary}</code> 运行，不经由 <code>/mcp</code>。安装并登录后，能访问本机终端的 Agent 可直接调用该命令。</p>}
         {cliError ? <Failure>{cliError}</Failure> : !cli && <Loading>正在检测本地程序…</Loading>}
         {!!installText && <div className="command"><h4>安装命令</h4><CodeBlock value={installText} /></div>}
         {platformSpecific && Object.entries(platformSpecific).map(([platform, command]) => command && <div className="command" key={platform}><h4>安装 · {platforms[platform] ?? platform}</h4><CodeBlock value={command} /></div>)}
@@ -170,7 +171,8 @@ export function ConnectorDetails({ id, initial, latest, setup, close, changed, o
   </Dialog>;
 }
 
-export function AgentSetup({ close }: { close: () => void }) {
+export function AgentSetup({ connectedClis, close }: { connectedClis: ConnectorView[]; close: () => void }) {
+  const cliHeadingId = useId();
   const [data, setData] = useState<ClientConfigs>();
   const [error, setError] = useState('');
   useEffect(() => {
@@ -185,10 +187,18 @@ export function AgentSetup({ close }: { close: () => void }) {
     {data && <>
       <p className="agent-intro">支持 Streamable HTTP 的 MCP 客户端可通过下方地址或 JSON 配置接入。</p>
       <div className="endpoint">
-        <div className="endpoint-label"><span>Streamable HTTP</span><span><i className="live-dot" />{data.activeConnectors} 个连接器已启用</span></div>
+        <div className="endpoint-label"><span>MCP 网关 · Streamable HTTP</span><span>{data.activeConnectors > 0 && <i className="live-dot" />}{data.activeConnectors} 个 MCP 已启用</span></div>
         <div className="endpoint-bar"><LinkIcon /><code>{data.endpoint}</code><Copy key={data.endpoint} value={data.endpoint} /></div>
+        {data.activeConnectors === 0 && connectedClis.length > 0 && <p className="info-note">当前已连接的均为本机 CLI 工具，不经由 <code>/mcp</code>。连接 MCP 服务后，其工具会自动汇总到此地址。</p>}
       </div>
       <CodeBlock value={JSON.stringify(data.config, null, 2)} label="JSON" />
     </>}
+    <section className="detail-section agent-cli" aria-labelledby={cliHeadingId}>
+      <div className="section-head"><h3 id={cliHeadingId}>本机 CLI 工具</h3><span className="status-label">{connectedClis.length} 个已连接</span></div>
+      <p className="agent-intro">本机 CLI 工具不经由 <code>/mcp</code>。安装并登录后，能访问本机终端的 Agent（如 Claude Code、Codex、Cursor）可直接调用这些命令。</p>
+      {connectedClis.length > 0 ? <ul className="cli-list">{connectedClis.map(connector => <li key={connector.id}>
+        {connector.name.zh}{connector.cli && <> · <code>{connector.cli.binary}</code></>}
+      </li>)}</ul> : <p className="small muted">还没有已连接的本机 CLI 工具。</p>}
+    </section>
   </Dialog>;
 }
